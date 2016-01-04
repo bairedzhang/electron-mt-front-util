@@ -22,7 +22,10 @@
     "url": "https://github.com/atom/electron-quick-start/issues"
   },
   "homepage": "https://github.com/atom/electron-quick-start#readme",
-  "devDependencies": {
-    "electron-prebuilt": "^0.36.0"
+  "devDependencies": {},
+  "dependencies": {
+    "mt-front-util": "0.0.3",
+    "vue": "^1.0.13",
+    "vue-strap": "^1.0.3"
   }
 }
