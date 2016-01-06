@@ -6,9 +6,10 @@
 
 const clipboard = require('electron').clipboard;
 var Vue = require('vue');
-var VueStrap = require('vue-strap');
+var fs = require('fs');
 var ipc = require('electron').ipcRenderer;
 var MT = require('mt-front-util');
+var jsfmt = require('jsfmt');
 
 document.addEventListener("keydown", function (e) {
     if (e.which === 123) {
@@ -17,21 +18,22 @@ document.addEventListener("keydown", function (e) {
         location.reload();
     }
 });
+
 Vue.config.debug = true;
 
 Vue.component('file-list', {
     props: ['list', 'title'],
-    data: function () {
+    data () {
         return {};
     },
     filters: {
-        relativePath: function (path) {
+        relativePath (path) {
             return path.replace(/.*\/(src|build\/)/, '$1');
         },
-        time: function (date) {
+        time (date) {
             return [date.getHours(), date.getMinutes(), date.getSeconds()].join(':');
         },
-        status: function (state) {
+        status (state) {
             return /ed$/.test(state) ? 'bg-success'
                 : 'bg-info';
         }
@@ -61,6 +63,119 @@ Vue.component('file-list', {
    `,
     replace: true
 });
+
+Vue.component('project-config', {
+    props: ['config', 'global'],
+    data () {
+        return {
+            presets: {
+                'es2015': false
+            },
+            plugins: {
+                'transform-react-jsx': false,
+                'transform-es2015-modules-mt-amd': false
+            }
+        };
+    },
+    filters: {},
+    template: `
+       <form>
+           <h3 class="text-uppercase">{{config.name || 'new project'}}</h3>
+           <div class="form-group">
+               <label>项目名称</label>
+               <input type="text" class="form-control" placeholder="项目名称" v-model="config.name">
+           </div>
+           <div class="form-group" @drop.prevent="drop">
+               <label>本地路径</label>
+               <input type="text" class="form-control" placeholder="本地路径" v-model="config.localPath">
+           </div>
+           <div class="form-group">
+               <label>测试机路径</label>
+               <input type="text" class="form-control" placeholder="测试机路径" v-model="config.serverPath">
+           </div>
+           <div class="form-group">
+               <label>编译任务</label>
+               <div>
+                   <label class="checkbox-inline">
+                      <input type="checkbox" name="" id="" value="true" v-model="presets.es2015"> es6
+                   </label>
+                   <label class="checkbox-inline">
+                      <input type="checkbox" name="" id="" value="true" v-model="plugins['transform-es2015-modules-mt-amd']"> mt-amd
+                   </label>
+                   <label class="checkbox-inline">
+                      <input type="checkbox" name="" id="" value="true" v-model="plugins['transform-react-jsx']"> react
+                   </label>
+               </div>
+           </div>
+           <button type="button" class="btn btn-primary" @click="save">保存</button>
+       </form>
+       `,
+    created () {
+        this.setConf();
+    },
+    methods: {
+        setConf () {
+            if (this.config.localPath) {
+                var confPath = this.config.localPath + '/mt-conf.js';
+                if (fs.existsSync(confPath)) {
+                    var localConf = require(confPath);
+                    Object.assign(this.config, localConf);
+                }
+            }
+            this.config.compile.babel.presets.forEach(function (item) {
+                this.presets[item] = true;
+            }.bind(this));
+            this.config.compile.babel.plugins.forEach(function (item) {
+                this.plugins[item] = true;
+            }.bind(this));
+            this.$set('xxx', 1);
+        },
+        getArray (obj) {
+            return Object.keys(obj).filter((item) => obj[item]).map((item) => item);
+        },
+        drop (e) {
+            var file = e.dataTransfer.files[0];
+            var path = file.path;
+            this.$set('config.localPath', path);
+            this.$set('config.confPath', path + '/mt-conf.js');
+            this.setConf();
+        },
+        save () {
+            var keys = ['proxyRoot', 'serverRoot', 'proxy'];
+            keys.forEach(function (key) {
+                this.config[key] = this.global[key];
+            }.bind(this));
+            var conf = Object.assign({}, this.config);
+            delete conf.watched;
+            var str = 'module.exports = ' + JSON.stringify(conf) + ';';
+            str = jsfmt.format(str);
+            this.$parent.saveProject();
+            fs.writeFileSync(conf.confPath, str, {encoding: 'utf8'});
+        }
+    },
+    watch: {
+        config: {
+            handler (val, oldVal) {
+                this.setConf();
+            },
+            deep: true
+        },
+        presets: {
+            handler (val) {
+                this.config.compile.babel.presets = this.getArray(val);
+            },
+            deep: true
+        },
+        plugins: {
+            handler (val) {
+                this.config.compile.babel.plugins = this.getArray(val);
+            },
+            deep: true
+        }
+    },
+    replace: true
+});
+
 new Vue({
     el: '#app',
     template: `
@@ -71,29 +186,32 @@ new Vue({
                     <button style="vertical-align:5px;" type="button" class="btn btn-default btn-xs" @click="toggleShowGlobal" aria-label="Left Align">
                             <span class="glyphicon" :class="{'glyphicon-plus-sign': !showGlobalConfig,'glyphicon-minus-sign': showGlobalConfig}" aria-hidden="true"></span>
                     </button>
+
+                    <button style="vertical-align:5px;" type="button" class="btn btn-default btn-sm pull-right" :class="{'btn-primary': proxy}" @click="toggleProxy" aria-label="Left Align">
+                            <span class="glyphicon glyphicon-globe" aria-hidden="true"></span>&nbsp;本地代理
+                    </button>
                 </h3>
                 <div v-show="showGlobalConfig">
-                    <div class="form-group" v-for="(key, val) in config.global">
-                        <label for="{{key}}">{{key}}</label>
-                        <input type="text" class="form-control" id="{{key}}" placeholder="{{key}}" v-model="config.global[key]">
+                    <div class="form-group">
+                        <label for="proxyRoot">proxyRoot</label>
+                        <input type="text" class="form-control"  placeholder="proxyRoot" v-model="config.proxyRoot">
+                    </div>
+                    <div class="form-group">
+                        <label for="serverRoot">serverRoot</label>
+                        <input type="text" class="form-control" placeholder="serverRoot" v-model="config.serverRoot">
+                    </div>
+                    <div class="form-group">
+                        <label for="proxyPort">代理端口</label>
+                        <input type="text" class="form-control" id="proxyPort"placeholder="proxy port" v-model="config.proxy.port">
+                    </div>
+                    <div class="form-group">
+                        <label for="proxyMap">代理映射(g=info等)</label>
+                        <input type="text" class="form-control" id="proxyMap" placeholder="proxy map" v-model="proxyMap">
                     </div>
                     <button type="button" class="btn btn-primary" @click="save">保存</button>
                 </div>
-            </form>
-           <div>
-                <h3 class="text-uppercase">new project</h3>
-                <form>
-                <div class="form-group">
-                    <label for="exampleInputtext1">项目名称</label>
-                    <input type="text" class="form-control" placeholder="项目名称" v-model="curProject.name">
-                </div>
-                <div class="form-group" @dragleave.prevent  @dragover.prevent  @drop.prevent="drop">
-                    <label for="exampleInputtext1">配置文件路径(拖拽文件路径到此处)</label>
-                    <input type="text" class="form-control" placeholder="配置文件路径(拖拽文件路径到此处)" v-model="curProject.confPath">
-                </div>
-                <p><button type="button" class="btn btn-primary" @click="saveProject">保存</button></p>
-               </form>
-           </div>
+           </form>
+           <project-config :config.sync="curProject" :global="config"></project-config>
            <div class="panel panel-default">
                 <div class="panel-heading text-uppercase">project list</div>
                 <table class="table table-striped text-center">
@@ -122,6 +240,11 @@ new Vue({
                                    >构建</button>
                            <button index="{{key}}"
                                    type="button"
+                                   class="btn btn-sm btn-success"
+                                   @click="edit"
+                                   >编辑</button>
+                           <button index="{{key}}"
+                                   type="button"
                                    class="btn btn-sm btn-danger"
                                    @click="remove"
                                    >删除</button>
@@ -130,108 +253,133 @@ new Vue({
                     </tbody>
                 </table>
             </div>
-           <ul class="list-unstyled pre-scrollable lead">
-               <li v-for="item in console"><samp>{{item}}</samp></li>
-           </ul>
         </div>
     `,
     data: {
         files: [],
         projectList: {},
         console: [],
+        proxy: false,
+        proxyMap: '',
         curProject: {
             name: '',
-            confPath: ''
+            localPath: '',
+            serverPath: '',
+            compile: {
+                babel: {
+                    presets: [],
+                    plugins: []
+                }
+            },
+            confPath: '',
+            watch: ['upload', 'compile'],
+            build: ['upload', 'compile']
         },
         showGlobalConfig: false,
         isNotify: true,
         config: {
-            global: {
-                proxyRoot: '/tmp/tencent_proxy',
-                serverRoot: '/usr/local/app/resin_bairedzhang/webapps'
-            },
-            projects: {
-            },
+            proxyRoot: '/tmp/tencent_proxy',
+            serverRoot: '/usr/local/app/resin_bairedzhang/webapps',
             proxy: {
                 port: '8088',
                 map: {
                     'g': 'info'
-                },
-                open: true
-            }
+                }
+            },
+            projects: {}
         }
     },
 
     filters: {
-        watchStatus: function (status) {
+        watchStatus (status) {
             return status ? '关闭' : '开启';
         },
-        relativePath: function (path) {
+        relativePath (path) {
             return path.replace(/.*\/(src|build\/)/, '$1');
         },
-        simplePath: function (path) {
+        simplePath (path) {
             return path.replace(this.config.global.uploadRootPath, '');
         }
     },
 
-    watch: {
-        curProject: function (a) {
-            console.log(a);
-        }
-    },
-
     computed: {
-        showFileList: function () {
+        showFileList () {
             return Object.keys(this.files).length;
         },
-        compileList: function () {
+        compileList () {
             return this.files.filter(function (item) {
                 return item.path.indexOf('src') > -1;
             });
         },
-        uploadList: function () {
+        uploadList() {
             return this.files.filter(function (item) {
                 return item.path.indexOf('src') < 0;
             });
         }
     },
-    watches: {},
-    created: function () {
+    watch: {
+        proxyMap: {
+            handler (val) {
+                var o = {};
+                this.proxyMap.split('&').forEach(function (item) {
+                    var arr = item.split('=');
+                    if (arr.length == 2) {
+                        o[arr[0]] = arr[1];
+                    }
+                });
+                this.$set('config.proxy.map', o);
+            },
+            deep: true
+        }
+    },
+    created () {
+
         this.setConfig();
         this.events();
     },
     methods: {
-        events: function () {
-            event.on('message', function(type, path) {
-               this.notify({
-                   status: type,
-                   path: path
-               });
+        events () {
+            event.on('message', function (type, path) {
+                this.notify({
+                    status: type,
+                    path: path
+                });
             }.bind(this))
         },
 
-        toggleShowGlobal: function () {
+        toggleShowGlobal () {
             this.showGlobalConfig = !this.showGlobalConfig;
         },
 
-        uploadAll: function (e) {
+        toggleProxy () {
+            this.proxy = !this.proxy;
+            if (this.proxy) {
+                MT.proxy(Object.assign({}, this.config));
+            }
         },
 
-        build: function (e) {
+        uploadAll (e) {
+        },
+
+        build (e) {
             var idx = e.currentTarget.getAttribute('index');
             var project = this.projectList[idx];
-            var config = require(project.confPath);
-            console.log(config);
-            MT.build(config);
+            MT.build(Object.assign({}, project));
         },
 
-        notify: function (item) {
+        edit (e) {
+            var idx = e.currentTarget.getAttribute('index');
+            var project = this.projectList[idx];
+            this.curProject = Object.assign(this.curProject, project);
+        },
+
+        notify (item) {
             new Notification(item.status, {
                 body: item.path
             });
         },
 
-        setFile: function (path, status, name) {
+        setFile (path, status, name) {
             var o = this.files.filter(function (item) {
                 return item.path == path;
             });
@@ -248,7 +396,7 @@ new Vue({
             }
         },
 
-        remove: function (e) {
+        remove (e) {
             var idx = e.currentTarget.getAttribute('index');
             delete this.projectList[idx];
             delete this.config.projects[idx];
@@ -256,7 +404,7 @@ new Vue({
             this.save();
         },
 
-        setConfig: function () {
+        setConfig () {
             var config = {};
             var localConfig = localStorage.getItem('config');
             if (localConfig) {
@@ -268,22 +416,23 @@ new Vue({
             for (var key in this.config.projects) {
                 this.projectList[key] = Object.assign({watched: false}, this.config.projects[key]);
             }
-            console.log(this.projectList);
+            this.proxyMap = Object.keys(this.config.proxy.map).map((key) => key + '=' + this.config.proxy.map[key]).join('&');
         },
 
-        saveProject: function () {
+        saveProject () {
             var curProject = this.curProject;
-            this.$set('projectList.' + curProject.name , Object.assign({watched: false}, curProject));
+            this.projectList[curProject.name] = Object.assign({watched: false}, curProject);
             this.config.projects[curProject.name] = curProject;
-            this.$set('config.projects.' + curProject.name, curProject);
+            this.config.projects[curProject.name] = curProject;
+            this.$set('xxx', 1);
             this.save();
         },
 
-        toggleWatch: function (e) {
+        toggleWatch (e) {
             var idx = e.currentTarget.getAttribute('index');
             var project = this.projectList[idx];
             project.watched = !project.watched;
-            var config = require(project.confPath);
+            var config = Object.assign({}, project);
             if (!project.watched) {
                 MT.close(config)
             } else {
@@ -291,7 +440,7 @@ new Vue({
             }
         },
 
-        getServerRoot: function (rootPath, serverRoot) {
+        getServerRoot (rootPath, serverRoot) {
             var global = this.config.global;
             var path = '';
             if (serverRoot) {
@@ -301,14 +450,8 @@ new Vue({
             return path;
         },
 
-        save: function () {
+        save () {
             localStorage.setItem('config', JSON.stringify(this.config));
-        },
-
-        drop: function (e) {
-            var file = e.dataTransfer.files[0];
-            var path = file.path;
-            this.$set('curProject.confPath', path);
         }
     }
 });

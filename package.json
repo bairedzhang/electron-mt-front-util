@@ -24,7 +24,8 @@
   "homepage": "https://github.com/atom/electron-quick-start#readme",
   "devDependencies": {},
   "dependencies": {
-    "mt-front-util": "0.0.3",
+    "jsfmt": "^0.5.2",
+    "mt-front-util": "^0.1.0",
     "vue": "^1.0.13",
     "vue-strap": "^1.0.3"
   }
