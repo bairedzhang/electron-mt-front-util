@@ -8,7 +8,6 @@ const clipboard = require('electron').clipboard;
 var Vue = require('vue');
 var fs = require('fs');
 var ipc = require('electron').ipcRenderer;
-var MT = require('mt-front-util');
 var jsfmt = require('jsfmt');
 
 document.addEventListener("keydown", function (e) {
@@ -22,7 +21,7 @@ document.addEventListener("keydown", function (e) {
 Vue.config.debug = true;
 
 Vue.component('file-list', {
-    props: ['list', 'title'],
+    props: ['list'],
     data () {
         return {};
     },
@@ -31,7 +30,10 @@ Vue.component('file-list', {
             return path.replace(/.*\/(src|build\/)/, '$1');
         },
         time (date) {
-            return [date.getHours(), date.getMinutes(), date.getSeconds()].join(':');
+            var fmt = function(num) {
+               return num < 10 ? ('0' + num) : num
+            };
+            return [date.getHours(), date.getMinutes(), date.getSeconds()].map((item) => fmt(item)).join(':');
         },
         status (state) {
             return /ed$/.test(state) ? 'bg-success'
@@ -39,25 +41,14 @@ Vue.component('file-list', {
         }
     },
     template: `
-   <div class="panel panel-default" v-if="list.length">
-                <div class="panel-heading text-uppercase">{{title}}</div>
-                <table class="table text-center">
-                    <thead>
-                        <tr>
-                           <td width="15%">项目</td>
-                           <td width="55%">文件路径</td>
-                           <td width="15%">状态</td>
-                           <td width="15%">时间</td>
+           <div class="panel panel-default" v-if="list.length">
+                <div class="panel-heading text-uppercase">update messages</div>
+                <table class="table text-center table-condensed">
+                        <tr v-for="item in list" class="success">
+                           <td width="15%">{{item.status}}</td>
+                           <td width="60%">{{item.path}}</td>
+                           <td width="15%">{{item.time | time}}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="item in list" class="{{item.status | status}}">
-                           <td>{{item.name}}</td>
-                           <td>{{item.path | relativePath}}</td>
-                           <td>{{item.status}}</td>
-                           <td>{{item.time | time}}</td>
-                        </tr>
-                    </tbody>
                 </table>
            </div>
    `,
@@ -253,12 +244,12 @@ new Vue({
                     </tbody>
                 </table>
             </div>
+            <file-list :list="messages"></file-list>
         </div>
     `,
     data: {
-        files: [],
+        messages: [],
         projectList: {},
-        console: [],
         proxy: false,
         proxyMap: '',
         curProject: {
@@ -339,22 +330,27 @@ new Vue({
     },
     methods: {
         events () {
-            event.on('message', function (type, path) {
-                this.notify({
-                    status: type,
-                    path: path
-                });
-            }.bind(this))
+            ipc.on('message', function (o, data) {
+                this.notify(JSON.parse(data));
+            }.bind(this));
         },
 
         toggleShowGlobal () {
             this.showGlobalConfig = !this.showGlobalConfig;
         },
 
+        MT(method, data) {
+            var o = {
+                method: method,
+                data: data
+            };
+            ipc.send('message', JSON.stringify(o));
+        },
+
         toggleProxy () {
             this.proxy = !this.proxy;
             if (this.proxy) {
-                MT.proxy(Object.assign({}, this.config));
+                this.MT('proxy', Object.assign({}, this.config));
             }
         },
 
@@ -364,7 +360,7 @@ new Vue({
         build (e) {
             var idx = e.currentTarget.getAttribute('index');
             var project = this.projectList[idx];
-            MT.build(Object.assign({}, project));
+            this.MT('build', Object.assign({}, project));
         },
 
         edit (e) {
@@ -377,23 +373,8 @@ new Vue({
             new Notification(item.status, {
                 body: item.path
             });
-        },
-
-        setFile (path, status, name) {
-            var o = this.files.filter(function (item) {
-                return item.path == path;
-            });
-            if (o.length) {
-                o[0].status = status;
-                o[0].time = new Date();
-            } else {
-                this.files.unshift({
-                    path: path,
-                    status: status,
-                    time: new Date(),
-                    name: name
-                });
-            }
+            item.time = new Date();
+            this.messages.push(item);
         },
 
         remove (e) {
@@ -434,9 +415,9 @@ new Vue({
             project.watched = !project.watched;
             var config = Object.assign({}, project);
             if (!project.watched) {
-                MT.close(config)
+                this.MT('close', config);
             } else {
-                MT.watch(config);
+                this.MT('watch', config);
             }
         },
 

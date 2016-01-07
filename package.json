@@ -22,7 +22,10 @@
     "url": "https://github.com/atom/electron-quick-start/issues"
   },
   "homepage": "https://github.com/atom/electron-quick-start#readme",
-  "devDependencies": {},
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-electron-installer": "^1.2.0"
+  },
   "dependencies": {
     "jsfmt": "^0.5.2",
     "mt-front-util": "^0.1.0",
