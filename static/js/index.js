@@ -41,7 +41,7 @@ Vue.component('file-list', {
         }
     },
     template: `
-           <div class="panel panel-default" v-if="list.length">
+           <div class="panel panel-default pre-scrollable" v-if="list.length">
                 <div class="panel-heading text-uppercase">update messages</div>
                 <table class="table text-center table-condensed">
                         <tr v-for="item in list" class="success">
