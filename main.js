@@ -10,6 +10,7 @@ electron.crashReporter.start();
 //catch exception
 process.on('uncaughtException', function (err) {
     console.log(err.stack);
+    MSG.send('error', JSON.stringify(err));
 });
 
 // Keep a global reference of the window object, if you don't, the window will

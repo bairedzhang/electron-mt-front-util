@@ -18,6 +18,7 @@ document.addEventListener("keydown", function (e) {
     }
 });
 
+
 Vue.config.debug = true;
 
 Vue.component('file-list', {
@@ -332,6 +333,10 @@ new Vue({
         events () {
             ipc.on('message', function (o, data) {
                 this.notify(JSON.parse(data));
+            }.bind(this));
+
+            ipc.on('error', function (o, data) {
+                alert(data);
             }.bind(this));
         },
 
