@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "jsfmt": "^0.5.2",
-    "mt-front-util": "^0.1.0",
+    "mt-front-util": "*",
     "vue": "^1.0.13",
     "vue-strap": "^1.0.3"
   }

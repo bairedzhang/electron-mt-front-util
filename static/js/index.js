@@ -98,7 +98,7 @@ Vue.component('project-config', {
                    </label>
                </div>
            </div>
-           <button type="button" class="btn btn-primary" @click="save">保存</button>
+           <p> <button type="button" class="btn btn-primary" @click="save">保存</button></p>
        </form>
        `,
     created () {
@@ -351,6 +351,8 @@ new Vue({
             this.proxy = !this.proxy;
             if (this.proxy) {
                 this.MT('proxy', Object.assign({}, this.config));
+            } else {
+                this.MT('closeProxy', {});
             }
         },
 
