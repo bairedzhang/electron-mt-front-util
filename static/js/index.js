@@ -336,8 +336,12 @@ new Vue({
             }.bind(this));
 
             ipc.on('error', function (o, data) {
-                alert(data);
+                console.log(data);
             }.bind(this));
+
+            window.onbeforeunload = function (e) {
+                this.MT('closeAll')
+            }.bind(this);
         },
 
         toggleShowGlobal () {
@@ -347,7 +351,7 @@ new Vue({
         MT(method, data) {
             var o = {
                 method: method,
-                data: data
+                data: data || {}
             };
             ipc.send('message', JSON.stringify(o));
         },

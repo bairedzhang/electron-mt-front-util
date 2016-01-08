@@ -26,16 +26,11 @@ app.on('window-all-closed', function () {
         app.quit();
     }
 });
-var killAllChild = function () {
-    Object.keys(watcherList).forEach(function (item) {
-        watcherList[item].stop();
-    });
-};
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 app.on('ready', function () {
     // Create the browser window.
-    mainWindow = new BrowserWindow({width: 1200, height: 800});
+    mainWindow = new BrowserWindow({width: 1200, height: 800, type:'textured'});
 
     global.MSG = mainWindow.webContents;
     // and load the index.html of the app.
