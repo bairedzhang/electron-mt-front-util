@@ -1,27 +1,25 @@
 {
-  "name": "electron-quick-start",
-  "version": "1.0.0",
-  "description": "A minimal Electron application",
+  "name": "electron-mt-front-util",
+  "version": "0.0.1",
+  "description": "A minimal Electron for mt frontend",
   "main": "main.js",
   "scripts": {
     "start": "electron main.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/atom/electron-quick-start.git"
+    "url": "git+https://github.com/bairedzhang/electron-mt-front-util.git"
   },
   "keywords": [
     "Electron",
-    "quick",
-    "start",
-    "tutorial"
+    "mt-front"
   ],
-  "author": "GitHub",
+  "author": "bairedzhang",
   "license": "CC0-1.0",
   "bugs": {
-    "url": "https://github.com/atom/electron-quick-start/issues"
+    "url": "https://github.com/bairedzhang/electron-mt-front-util/issues"
   },
-  "homepage": "https://github.com/atom/electron-quick-start#readme",
+  "homepage": "https://github.com/bairedzhang/electron-mt-front-util#readme",
   "devDependencies": {
     "grunt": "^0.4.5",
     "grunt-electron-installer": "^1.2.0"
