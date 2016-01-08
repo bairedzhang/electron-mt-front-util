@@ -5,7 +5,7 @@
 ##Installing
 ```sh
 #require electron-prebuilt
-$ npm install electron-prebuilt
+$ npm install -g electron-prebuilt
 # Clone this repository
 $ git clone https://github.com/bairedzhang/electron-mt-front-util.git
 # Go into the repository
